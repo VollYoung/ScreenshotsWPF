@@ -1,0 +1,71 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Version>1.0.0.10</Version>
+    <Company>aimotech.cn</Company>
+    <Authors>aimotech.cn</Authors>
+    <Copyright>Copyright © aimotech.cn. All rights reserved.</Copyright>
+    <ApplicationIcon>Labelife.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>D:\work\Project\AimoLabelEditor\bin\release\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>D:\work\Project\AimoLabelEditor\bin\debug\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Images\close.png" />
+    <None Remove="Images\close_hor.png" />
+    <None Remove="Images\cricle.png" />
+    <None Remove="Images\cricle_push.png" />
+    <None Remove="Images\download.png" />
+    <None Remove="Images\download_push.png" />
+    <None Remove="Images\mosaic.png" />
+    <None Remove="Images\mosaic_push.png" />
+    <None Remove="Images\ok.png" />
+    <None Remove="Images\ok_hor.png" />
+    <None Remove="Images\pen.png" />
+    <None Remove="Images\pen_push.png" />
+    <None Remove="Images\rect.png" />
+    <None Remove="Images\rect_push.png" />
+    <None Remove="Images\text.png" />
+    <None Remove="Images\text_push.png" />
+    <None Remove="Images\undo.png" />
+    <None Remove="Images\undo_disable.png" />
+    <None Remove="Images\undo_push.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\close.png" />
+    <Resource Include="Images\close_hor.png" />
+    <Resource Include="Images\cricle.png" />
+    <Resource Include="Images\cricle_push.png" />
+    <Resource Include="Images\download.png" />
+    <Resource Include="Images\download_push.png" />
+    <Resource Include="Images\mosaic.png" />
+    <Resource Include="Images\mosaic_push.png" />
+    <Resource Include="Images\ok.png" />
+    <Resource Include="Images\ok_hor.png" />
+    <Resource Include="Images\pen.png" />
+    <Resource Include="Images\pen_push.png" />
+    <Resource Include="Images\rect.png" />
+    <Resource Include="Images\rect_push.png" />
+    <Resource Include="Images\text.png" />
+    <Resource Include="Images\text_push.png" />
+    <Resource Include="Images\undo.png" />
+    <Resource Include="Images\undo_disable.png" />
+    <Resource Include="Images\undo_push.png" />
+  </ItemGroup>
+
+</Project>
