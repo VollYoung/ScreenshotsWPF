@@ -6,12 +6,12 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 using Screenshots.Adorner;
 using CheckBox = System.Windows.Controls.CheckBox;
 using Clipboard = System.Windows.Clipboard;
@@ -37,6 +37,12 @@ namespace Screenshots
             Clipboard.Clear();
 
             DataContext = this;
+
+            using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
+            {
+                dpiX = graphics.DpiX / 96;
+                dpiY = graphics.DpiY / 96;
+            }
 
             _screen = CopyScreen();
             Canvas.Width = _screen.Width;
@@ -93,6 +99,17 @@ namespace Screenshots
         private double x;
         private double y;
         private bool _isSelected;
+        private double dpiX = 1.0;
+        private double dpiY = 1.0;
+        /// <summary>
+        /// 记录截图后的图像
+        /// </summary>
+        public BitmapSource _cutImage;
+
+        /// <summary>
+        /// 粗细、颜色工具条显示在截图工具条的上方
+        /// </summary>
+        private bool UpControlGridPostion = false;
 
         #endregion
 
@@ -166,17 +183,17 @@ namespace Screenshots
             }
             else
             {
-                //自动根据窗口判断截图区域
+                //自动根据窗口判断截图区域(不太准确，暂时关闭)
 
-                if (!_isSelected)
-                {
-                    if (wins.Any(x => x.Left <= p.X && x.Top <= p.Y && x.Right >= p.X && x.Bottom >= p.Y))
-                    {
-                        var rect = wins.First(x => x.Left <= p.X && x.Top <= p.Y && x.Right >= p.X && x.Bottom >= p.Y);
+                //if (!_isSelected)
+                //{
+                //    if (wins.Any(x => x.Left <= p.X && x.Top <= p.Y && x.Right >= p.X && x.Bottom >= p.Y))
+                //    {
+                //        var rect = wins.First(x => x.Left <= p.X && x.Top <= p.Y && x.Right >= p.X && x.Bottom >= p.Y);
 
-                        SetImage(new Rect(new Point(rect.Left, rect.Top), new Size(rect.Right - rect.Left, rect.Bottom - rect.Top)));
-                    }
-                }
+                //        SetImage(new Rect(new Point(rect.Left, rect.Top), new Size(rect.Right - rect.Left, rect.Bottom - rect.Top)));
+                //    }
+                //}
 
             }
         }
@@ -263,9 +280,20 @@ namespace Screenshots
                 var width = (int)Math.Min(Image.ActualWidth - clipRect.X, clipRect.Width);
                 var height = (int)Math.Min(Image.ActualHeight - clipRect.Y, clipRect.Height);
 
+                width = (int)(width * dpiX);
+                height = (int)(height * dpiY);
+                clipRect.X *= dpiX;
+                clipRect.Y *= dpiY;
+
+                if (clipRect.X + width > _screen.Width || (clipRect.Y + height) > _screen.Height)
+                {
+                    clipRect.X = clipRect.Y = 0;
+                    width = (int)_screen.Width;
+                    height = (int)_screen.Height;
+                }
+
                 var rect = new Rect(new Size(width, height));
-
-
+                
                 CroppedBitmap cb = new CroppedBitmap(_screen, new Int32Rect((int)clipRect.X, (int)clipRect.Y, (int)width, (int)height));
 
                 DrawingVisual visual = new DrawingVisual();
@@ -274,9 +302,7 @@ namespace Screenshots
                 context.DrawRectangle(new VisualBrush(AdornerRectangle), null, rect);
                 context.Close();
 
-                var dpi = VisualTreeHelper.GetDpi(this);
-                var dpix = Convert.ToSingle(dpi.PixelsPerInchX);
-                RenderTargetBitmap bmp = new RenderTargetBitmap(width, height, dpix, dpix, PixelFormats.Pbgra32);
+                RenderTargetBitmap bmp = new RenderTargetBitmap(width, height, 96d, 96d, PixelFormats.Pbgra32);
                 bmp.Render(visual);
 
                 Clipboard.SetImage(bmp);
@@ -300,20 +326,30 @@ namespace Screenshots
             UpdateUndoBtnEnable();
             UnCheckBtn();
         }
+
+        /// <summary>
+        /// 获取屏幕截图
+        /// </summary>
+        /// <returns></returns>
         private BitmapSource CopyScreen()
         {
-            var left = Screen.AllScreens.Min(screen => screen.Bounds.X);
-            var top = Screen.AllScreens.Min(screen => screen.Bounds.Y);
-            var right = Screen.AllScreens.Max(screen => screen.Bounds.X + screen.Bounds.Width);
-            var bottom = Screen.AllScreens.Max(screen => screen.Bounds.Y + screen.Bounds.Height);
-            var width = right - left;
-            var height = bottom - top;
+            //var left = Screen.AllScreens.Min(screen => screen.Bounds.X);
+            //var top = Screen.AllScreens.Min(screen => screen.Bounds.Y);
+            //var right = Screen.AllScreens.Max(screen => screen.Bounds.X + screen.Bounds.Width);
+            //var bottom = Screen.AllScreens.Max(screen => screen.Bounds.Y + screen.Bounds.Height);
+            //var width = right - left;
+            //var height = bottom - top;
 
-            using (var screenBmp = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            var width = SystemParameters.PrimaryScreenWidth * dpiX;
+            var height = SystemParameters.PrimaryScreenHeight * dpiY;
+
+            //System.Windows.MessageBox.Show(width.ToString() + "====" + height.ToString());
+
+            using (var screenBmp = new Bitmap((int)width, (int)height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
             {
                 using (var bmpGraphics = Graphics.FromImage(screenBmp))
                 {
-                    bmpGraphics.CopyFromScreen(left, top, 0, 0, new System.Drawing.Size(width, height));
+                    bmpGraphics.CopyFromScreen(0, 0, 0, 0, screenBmp.Size, CopyPixelOperation.SourceCopy);
                     return Imaging.CreateBitmapSourceFromHBitmap(
                         screenBmp.GetHbitmap(),
                         IntPtr.Zero,
@@ -456,6 +492,10 @@ namespace Screenshots
             }
         }
 
+        /// <summary>
+        /// 设置工具条的位置
+        /// </summary>
+        /// <param name="rect"></param>
         private void SetImage(Rect rect)
         {
             Image.Visibility = Visibility.Visible;
@@ -469,12 +509,25 @@ namespace Screenshots
 
             Canvas.SetLeft(Controller, rect.X + rect.Width - Controller.Width);
             var y = rect.Y + rect.Height + 5;
-            if (Image.ActualHeight < y + Controller.Height)
+            var y1 = rect.Y + rect.Height - Controller.Height - 5;
+
+            if (Image.ActualHeight < y + Controller.Height) //截图区域底部不足以容纳工具条
             {
-                Canvas.SetTop(Controller, rect.Y - Controller.Height - 5);
+                if (rect.Y < Controller.Height + 5)//截图区域的顶部不足以容纳工具条
+                {
+                    Canvas.SetLeft(Controller, rect.X + rect.Width - Controller.Width - 5);
+                    Canvas.SetTop(Controller, y1);
+                    UpControlGridPostion = true;
+                }
+                else
+                {
+                    UpControlGridPostion = false;
+                    Canvas.SetTop(Controller, rect.Y - Controller.Height - 5);
+                }
             }
-            else
+            else//截图区域底部可以容纳工具条
             {
+                UpControlGridPostion = false;
                 Canvas.SetTop(Controller, y);
             }
 
@@ -500,7 +553,7 @@ namespace Screenshots
         #region 控制面板
         private void Okbtn_OnClick(object sender, RoutedEventArgs e)
         {
-            CopyToClipBoard();
+            _cutImage =  CopyToClipBoard();
             this.Close();
         }
         private void Closebtn_OnClick(object sender, RoutedEventArgs e)
@@ -540,13 +593,13 @@ namespace Screenshots
 
         private void Downloadbtn_OnClick(object sender, RoutedEventArgs e)
         {
-            var bitmap = CopyToClipBoard();
+            _cutImage = CopyToClipBoard();
 
-            if (bitmap != null)
+            if (_cutImage != null)
             {
                 SaveFileDialog saveFileDialog = new SaveFileDialog();
-                saveFileDialog.Filter = "*.PNG|*.PNG";
-                if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                saveFileDialog.Filter = "*.png|*.png";
+                if (saveFileDialog.ShowDialog() is true)
                 {
                     try
                     {
@@ -554,12 +607,13 @@ namespace Screenshots
                         {
                             using FileStream stream = new FileStream(saveFileDialog.FileName, FileMode.Create);
                             PngBitmapEncoder encoder = new PngBitmapEncoder();
-                            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                            encoder.Frames.Add(BitmapFrame.Create(_cutImage));
                             encoder.Save(stream);
                         }
                     }
                     catch (Exception ex) { }
                 }
+                this.Close();
             }
         }
         #endregion
@@ -675,7 +729,7 @@ namespace Screenshots
             {
                 Cursor = Cursors.SizeAll,
                 CornerRadius = new CornerRadius(2),
-                BorderThickness = new Thickness(SizeSelected),
+                BorderThickness = new Thickness(SizeSelected / 2),
                 BorderBrush = new SolidColorBrush(ColorSelected)
             };
             drawingRect.MouseLeftButtonDown += (sender, args) => { _selectedElement = (Border)sender; };
@@ -686,7 +740,7 @@ namespace Screenshots
             drawingEllipse = new Ellipse
             {
                 Cursor = Cursors.SizeAll,
-                StrokeThickness = SizeSelected,
+                StrokeThickness = SizeSelected / 2,
                 Stroke = new SolidColorBrush(ColorSelected)
             };
             drawingEllipse.MouseLeftButtonDown += (sender, args) => { _selectedElement = (Ellipse)sender; };
@@ -699,7 +753,7 @@ namespace Screenshots
                 Cursor = Cursors.SizeAll,
                 Width = AdornerRectangle.ActualWidth,
                 Height = AdornerRectangle.ActualHeight,
-                StrokeThickness = SizeSelected,
+                StrokeThickness = SizeSelected / 2,
                 Stroke = new SolidColorBrush(ColorSelected)
             };
             
@@ -937,9 +991,17 @@ namespace Screenshots
             var x = Convert.ToSingle(Math.Max(0, Math.Min(element.X, maxX)));
 
             Canvas.SetLeft(ControlGrid, x);
-            Canvas.SetTop(ControlGrid, element.Bottom);
 
-            UpdateArrow(element, new Rect(new Point(x, element.Bottom), ControlGrid.RenderSize));
+            if (UpControlGridPostion)
+            {
+                Canvas.SetTop(ControlGrid, element.Top - Controller.Height);
+                UpdateArrow(element, new Rect(new Point(x, element.Top - Controller.Height), ControlGrid.RenderSize));
+            }
+            else
+            {
+                Canvas.SetTop(ControlGrid, element.Bottom);
+                UpdateArrow(element, new Rect(new Point(x, element.Bottom), ControlGrid.RenderSize));
+            }
         }
 
         private void UpdateArrow(Rect elementRect, Rect contentRect)

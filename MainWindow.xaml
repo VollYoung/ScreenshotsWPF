@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-       AllowsTransparency="True"
-        WindowStyle="None" Topmost="True"
+        AllowsTransparency="True"
+        WindowStyle="None"
         WindowState="Maximized" ShowInTaskbar="False"
         MouseLeftButtonDown="MainWindow_OnMouseDown" PreviewKeyDown="MainWindow_OnPreviewKeyDown"
         MouseMove="MainWindow_OnMouseMove" MouseRightButtonUp="MainWindow_OnMouseRightButtonUp" MouseLeftButtonUp="MainWindow_OnMouseLeftButtonUp">
@@ -102,9 +102,9 @@
 
   <Grid Background="Black">
 
-    <Image x:Name="ImageMask" Stretch="None" Opacity="0.2"/>
+    <Image x:Name="ImageMask" Opacity="0.3"/>
 
-    <Image x:Name="Image" Stretch="None"/>
+    <Image x:Name="Image"/>
 
     <Canvas x:Name="Canvas">
       <Canvas x:Name="AdornerRectangle" Focusable="True" ClipToBounds="True" Background="#01FFFFFF" PreviewMouseMove="AdornerRectangle_OnPreviewMouseMove" MouseLeftButtonDown="AdornerRectangle_OnMouseLeftButtonDown"  PreviewMouseLeftButtonDown="AdornerRectangle_OnPreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="AdornerRectangle_OnPreviewMouseLeftButtonUp"/>
