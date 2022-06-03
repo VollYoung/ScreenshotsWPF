@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -39,8 +40,25 @@ namespace Screenshots
             DataContext = this;
 
             _screen = CopyScreen();
-            Canvas.Width = _screen.Width;
-            Canvas.Height = _screen.Height;
+
+            _scale = Resolution.Default.Scale;
+            var scaleWidth = _screen.PixelWidth / _scale;
+            var scaleHeight = _screen.PixelHeight / _scale;
+
+            Canvas.Width = scaleWidth;
+            Canvas.Height = scaleHeight;
+            ImageMask.Width = scaleWidth;
+            ImageMask.Height = scaleHeight;
+            Image.Width = scaleWidth;
+            Image.Height = scaleHeight;
+
+            ImageMask.Stretch = Stretch.Uniform;
+            Image.Stretch = Stretch.Uniform;
+            ImageMask.UseLayoutRounding = true;
+            ImageMask.SnapsToDevicePixels = true;
+            Image.UseLayoutRounding = true;
+            Image.SnapsToDevicePixels = true;
+
             ImageMask.Source = _screen;
             Image.Source = _screen;
             Image.Visibility = Visibility.Collapsed;
@@ -48,6 +66,8 @@ namespace Screenshots
             ResizeAdorner = new ResizeAdorner(AdornerRectangle);
             ResizeAdorner.ShowHandles = true;
             ResizeAdorner.OnHandleMouseDown += ResizeAdorner_OnHandleMouseDown;
+
+            Activate();
 
             var winds = WinApi.GetWindows();
             var WS_CLIPCHILDREN = 0x02000000L;
@@ -57,11 +77,13 @@ namespace Screenshots
                 var p = WinApi.GetWindowLongPtr(win, WinApi.GWL.GWL_STYLE);
 
                 if (((long)p & WS_CLIPCHILDREN) == WS_CLIPCHILDREN
-                 || ((long)p & WS_BORDER) == WS_BORDER
-                )
+                 || ((long)p & WS_BORDER) == WS_BORDER)
                 {
                     WinApi.GetWindowRect(win, out WinApi.RECT rect);
-                    wins.Add(rect);
+
+                    RectangleF scaleRect = new RectangleF(rect.Left / _scale, rect.Top / _scale, (rect.Right - rect.Left) / _scale, (rect.Bottom - rect.Top) / _scale);
+
+                    wins.Add(scaleRect);
                 }
             }
         }
@@ -69,6 +91,8 @@ namespace Screenshots
 
 
         #region 属性
+
+        private float _scale;
 
         private bool IsDrawing => (rectbtn.IsChecked.HasValue && rectbtn.IsChecked.Value) ||
                                   (criclebtn.IsChecked.HasValue && criclebtn.IsChecked.Value) ||
@@ -86,7 +110,7 @@ namespace Screenshots
             set;
         }
 
-        private List<WinApi.RECT> wins = new List<WinApi.RECT>();
+        private List<RectangleF> wins = new List<RectangleF>();
 
         private Handle _resizeHandle;
         private BitmapSource _screen;
@@ -125,6 +149,7 @@ namespace Screenshots
                 }
 
                 CopyToClipBoard();
+                DialogResult = true;
                 this.Close();
             }
 
@@ -174,10 +199,14 @@ namespace Screenshots
                     {
                         var rect = wins.First(x => x.Left <= p.X && x.Top <= p.Y && x.Right >= p.X && x.Bottom >= p.Y);
 
-                        SetImage(new Rect(new Point(rect.Left, rect.Top), new Size(rect.Right - rect.Left, rect.Bottom - rect.Top)));
+                        var left = Math.Max(0, rect.Left);
+                        var top = Math.Max(0, rect.Top);
+                        var width = Math.Min(Image.ActualWidth, rect.Right - left);
+                        var height = Math.Min(Image.ActualHeight, rect.Bottom - top);
+
+                        SetImage(new Rect(new Point(left, top), new Size(width, height)));
                     }
                 }
-
             }
         }
 
@@ -260,13 +289,16 @@ namespace Screenshots
 
             try
             {
-                var width = (int)Math.Min(Image.ActualWidth - clipRect.X, clipRect.Width);
-                var height = (int)Math.Min(Image.ActualHeight - clipRect.Y, clipRect.Height);
+                var width = (int)(Math.Min(Image.ActualWidth - clipRect.X, clipRect.Width) * _scale);
+                var height = (int)(Math.Min(Image.ActualHeight - clipRect.Y, clipRect.Height) * _scale);
 
                 var rect = new Rect(new Size(width, height));
 
 
-                CroppedBitmap cb = new CroppedBitmap(_screen, new Int32Rect((int)clipRect.X, (int)clipRect.Y, (int)width, (int)height));
+                var int32Rect = new Int32Rect((int)(clipRect.X * _scale), (int)(clipRect.Y * _scale),
+                    width, height);
+
+                CroppedBitmap cb = new CroppedBitmap(_screen, int32Rect);
 
                 DrawingVisual visual = new DrawingVisual();
                 DrawingContext context = visual.RenderOpen();
@@ -275,7 +307,7 @@ namespace Screenshots
                 context.Close();
 
                 var dpi = VisualTreeHelper.GetDpi(this);
-                var dpix = Convert.ToSingle(dpi.PixelsPerInchX);
+                var dpix = Convert.ToSingle(dpi.PixelsPerInchX) / _scale;
                 RenderTargetBitmap bmp = new RenderTargetBitmap(width, height, dpix, dpix, PixelFormats.Pbgra32);
                 bmp.Render(visual);
 
@@ -471,7 +503,15 @@ namespace Screenshots
             var y = rect.Y + rect.Height + 5;
             if (Image.ActualHeight < y + Controller.Height)
             {
-                Canvas.SetTop(Controller, rect.Y - Controller.Height - 5);
+                var top = rect.Y - Controller.Height - 5;
+                if (top < 0)
+                {
+                    Canvas.SetTop(Controller, rect.Y + rect.Height - Controller.Height - 5);
+                }
+                else
+                {
+                    Canvas.SetTop(Controller, top);
+                }
             }
             else
             {
@@ -501,6 +541,7 @@ namespace Screenshots
         private void Okbtn_OnClick(object sender, RoutedEventArgs e)
         {
             CopyToClipBoard();
+            DialogResult = true;
             this.Close();
         }
         private void Closebtn_OnClick(object sender, RoutedEventArgs e)
@@ -702,10 +743,22 @@ namespace Screenshots
                 StrokeThickness = SizeSelected,
                 Stroke = new SolidColorBrush(ColorSelected)
             };
-            
+
             drawingPolyline.MouseLeftButtonDown += (sender, args) => { _selectedElement = (Polyline)sender; };
             Canvas.SetTop(drawingPolyline, 0);
             Canvas.SetLeft(drawingPolyline, 0);
+        }
+
+        private static FontFamily GetDefaultFontFamily()
+        {
+            if (CultureInfo.CurrentCulture.IetfLanguageTag == "zh-CN")
+            {
+                return new FontFamily("Microsoft YaHei");
+            }
+            else
+            {
+                return new FontFamily("Microsoft Sans Serif");
+            }
         }
 
         private void InitTextbox(Point mousePoint)
@@ -718,7 +771,7 @@ namespace Screenshots
                     BorderThickness = new Thickness(1),
                     Background = new SolidColorBrush(Colors.Transparent),
                     AcceptsReturn = true,
-                    FontFamily = new FontFamily("Microsoft YaHei")
+                    FontFamily = GetDefaultFontFamily()
                 };
                 textBox.LostFocus += (sender, args) =>
                 {
@@ -944,54 +997,61 @@ namespace Screenshots
 
         private void UpdateArrow(Rect elementRect, Rect contentRect)
         {
-            Size arrowSize = new Size(4, 3);
-
-            if (contentRect.Contains(new Point(elementRect.Center().X, contentRect.Center().Y)))
+            try
             {
-                var min = arrowSize.Width * 4;
-                var center = Math.Max(Math.Min(elementRect.Center().X, contentRect.Right - min) - contentRect.Left, min);
-                var x1 = center - arrowSize.Width;
-                var x2 = center + arrowSize.Width;
-                double top, bottom;
+                Size arrowSize = new Size(4, 3);
 
-                if (elementRect.Top < contentRect.Top)
+                if (contentRect.Contains(new Point(elementRect.Center().X, contentRect.Center().Y)))
                 {
-                    //高亮 Element 位于上方
-                    top = arrowSize.Height - arrowSize.Width;
-                    bottom = arrowSize.Height;
-                }
-                else
-                {
-                    //高亮 Element 位于下方
-                    top = contentRect.Size.Height - (arrowSize.Height - arrowSize.Width);
-                    bottom = contentRect.Size.Height - arrowSize.Height;
-                }
+                    var min = arrowSize.Width * 4;
+                    var center = Math.Max(Math.Min(elementRect.Center().X, contentRect.Right - min) - contentRect.Left, min);
+                    var x1 = center - arrowSize.Width;
+                    var x2 = center + arrowSize.Width;
+                    double top, bottom;
 
-                SetValue(DataProperty, Geometry.Parse($"M{x1},{bottom} L{center},{top} L{x2},{bottom} L{x1},{bottom}"));
+                    if (elementRect.Top < contentRect.Top)
+                    {
+                        //高亮 Element 位于上方
+                        top = arrowSize.Height - arrowSize.Width;
+                        bottom = arrowSize.Height;
+                    }
+                    else
+                    {
+                        //高亮 Element 位于下方
+                        top = contentRect.Size.Height - (arrowSize.Height - arrowSize.Width);
+                        bottom = contentRect.Size.Height - arrowSize.Height;
+                    }
+
+                    SetValue(DataProperty, Geometry.Parse($"M{x1},{bottom} L{center},{top} L{x2},{bottom} L{x1},{bottom}"));
+                }
+                else if (contentRect.Contains(new Point(contentRect.Center().X, elementRect.Center().Y)))
+                {
+                    var min = arrowSize.Width * 4;
+                    var center = Math.Max(Math.Min(elementRect.Center().Y, contentRect.Bottom - min) - contentRect.Top, min);
+
+                    var y1 = center - arrowSize.Width;
+                    var y2 = center + arrowSize.Width;
+                    double left, right;
+
+                    if (elementRect.Left < contentRect.Left)
+                    {
+                        //高亮 Element 位于左方
+                        left = arrowSize.Height - arrowSize.Width;
+                        right = arrowSize.Height;
+                    }
+                    else
+                    {
+                        //高亮 Element 位于右方
+                        left = contentRect.Size.Width - (arrowSize.Height - arrowSize.Width);
+                        right = contentRect.Size.Width - arrowSize.Height;
+                    }
+
+                    SetValue(DataProperty, Geometry.Parse($"M{right},{y1} L{left},{center} L{right},{y2} L{right},{y1}"));
+                }
             }
-            else if (contentRect.Contains(new Point(contentRect.Center().X, elementRect.Center().Y)))
+            catch (Exception e)
             {
-                var min = arrowSize.Width * 4;
-                var center = Math.Max(Math.Min(elementRect.Center().Y, contentRect.Bottom - min) - contentRect.Top, min);
-
-                var y1 = center - arrowSize.Width;
-                var y2 = center + arrowSize.Width;
-                double left, right;
-
-                if (elementRect.Left < contentRect.Left)
-                {
-                    //高亮 Element 位于左方
-                    left = arrowSize.Height - arrowSize.Width;
-                    right = arrowSize.Height;
-                }
-                else
-                {
-                    //高亮 Element 位于右方
-                    left = contentRect.Size.Width - (arrowSize.Height - arrowSize.Width);
-                    right = contentRect.Size.Width - arrowSize.Height;
-                }
-
-                SetValue(DataProperty, Geometry.Parse($"M{right},{y1} L{left},{center} L{right},{y2} L{right},{y1}"));
+                //pass.
             }
         }
         #endregion
