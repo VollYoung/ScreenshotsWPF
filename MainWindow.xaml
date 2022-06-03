@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
        AllowsTransparency="True"
-        WindowStyle="None" Topmost="True"
-        WindowState="Maximized" ShowInTaskbar="False"
+        WindowStyle="None" Topmost="True" ShowActivated="True"
+        WindowState="Maximized" ShowInTaskbar="False" UseLayoutRounding="True" SnapsToDevicePixels="True"
         MouseLeftButtonDown="MainWindow_OnMouseDown" PreviewKeyDown="MainWindow_OnPreviewKeyDown"
         MouseMove="MainWindow_OnMouseMove" MouseRightButtonUp="MainWindow_OnMouseRightButtonUp" MouseLeftButtonUp="MainWindow_OnMouseLeftButtonUp">
   <!--AllowsTransparency="True"
@@ -102,11 +102,11 @@
 
   <Grid Background="Black">
 
-    <Image x:Name="ImageMask" Stretch="None" Opacity="0.2"/>
+    <Image x:Name="ImageMask" Opacity="0.2"/>
 
-    <Image x:Name="Image" Stretch="None"/>
+    <Image x:Name="Image" />
 
-    <Canvas x:Name="Canvas">
+    <Canvas x:Name="Canvas" >
       <Canvas x:Name="AdornerRectangle" Focusable="True" ClipToBounds="True" Background="#01FFFFFF" PreviewMouseMove="AdornerRectangle_OnPreviewMouseMove" MouseLeftButtonDown="AdornerRectangle_OnMouseLeftButtonDown"  PreviewMouseLeftButtonDown="AdornerRectangle_OnPreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="AdornerRectangle_OnPreviewMouseLeftButtonUp"/>
       <Border x:Name="Controller" Background="White" CornerRadius="2" Height="36" Width="380" HorizontalAlignment="Right" VerticalAlignment="Bottom" Visibility="Collapsed">
         <Border.Effect>
@@ -358,5 +358,6 @@
       </Grid>
 
     </Canvas>
+
   </Grid>
 </Window>

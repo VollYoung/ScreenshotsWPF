@@ -1,25 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>1.0.0.10</Version>
+    <Version>1.5.1.930</Version>
     <Company>aimotech.cn</Company>
-    <Authors>aimotech.cn</Authors>
+    <Authors>爱墨科技AIMO aimotech.cn</Authors>
     <Copyright>Copyright © aimotech.cn. All rights reserved.</Copyright>
     <ApplicationIcon>Labelife.ico</ApplicationIcon>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>D:\work\Project\AimoLabelEditor\bin\release\</OutputPath>
   </PropertyGroup>
-
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <OutputPath>D:\work\Project\AimoLabelEditor\bin\release\</OutputPath>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>D:\work\Project\AimoLabelEditor\bin\debug\</OutputPath>
   </PropertyGroup>
-
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <OutputPath>D:\work\Project\AimoLabelEditor\bin\debug\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <None Remove="Images\close.png" />
     <None Remove="Images\close_hor.png" />
@@ -41,11 +44,9 @@
     <None Remove="Images\undo_disable.png" />
     <None Remove="Images\undo_push.png" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
   </ItemGroup>
-
   <ItemGroup>
     <Resource Include="Images\close.png" />
     <Resource Include="Images\close_hor.png" />
@@ -67,5 +68,4 @@
     <Resource Include="Images\undo_disable.png" />
     <Resource Include="Images\undo_push.png" />
   </ItemGroup>
-
 </Project>

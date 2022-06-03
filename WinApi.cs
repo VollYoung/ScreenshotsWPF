@@ -142,5 +142,71 @@ namespace Screenshots
         [DllImport("user32.dll", EntryPoint = "EnumDesktopWindows",
             ExactSpelling = false, CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool EnumDesktopWindows(IntPtr hDesktop, EnumedWindow lpEnumCallbackFunction,ArrayList lParam);
+
+
+        #region 分辨率
+        [DllImport("User32.dll")]
+        public static extern IntPtr MonitorFromPoint([In] System.Drawing.Point pt, [In] uint dwFlags);
+
+        [DllImport("Shcore.dll")]
+        public static extern IntPtr GetDpiForMonitor([In] IntPtr hmonitor, [In] DpiType dpiType, out uint dpiX, out uint dpiY);
+
+        [DllImport("setupapi.dll", SetLastError = true)]
+        public static extern int CM_Locate_DevNodeA(ref int pdnDevInst, string pDeviceID, int ulFlags);
+        [DllImport("setupapi.dll", SetLastError = true)]
+        public static extern int CM_Get_Parent(out UInt32 pdnDevInst, UInt32 dnDevInst, int ulFlags);
+        [DllImport("setupapi.dll", SetLastError = true)]
+        public static extern int CM_Get_Device_ID_Size(out int pulLen, UInt32 dnDevInst, int flags = 0);
+        [DllImport("setupapi.dll", CharSet = CharSet.Unicode)]
+        public static extern int CM_Get_Device_ID(UInt32 dnDevInst, char[] buffer, int bufferLen, int flags);
+        [DllImport("setupapi.dll", SetLastError = true)]
+        static extern int CM_Get_Child(ref int pdnDevInst, int dnDevInst, int ulFlags);
+
+        /// <summary>
+        /// 获取设备父系
+        /// </summary>
+        /// <param name="driver"></param>
+        /// <returns></returns>
+        public static bool TryGetDriverIdParent(string driver, out string resultDeviceID)
+        {
+            resultDeviceID = "";
+            try
+            {
+                int CM_LOCATE_DEVNODE_NORMAL = 0x00000000;
+                int CR_SUCCESS = 0x00000000;
+                UInt32 parentInst;
+                int curInst = 0;
+                int pLen = 0;
+                int apiResult = CM_Locate_DevNodeA(ref curInst, driver, CM_LOCATE_DEVNODE_NORMAL);
+                if (apiResult != CR_SUCCESS)
+                {
+                    return false;
+                }
+                apiResult = CM_Get_Parent(out parentInst, (UInt32)curInst, CM_LOCATE_DEVNODE_NORMAL);
+                if (apiResult != CR_SUCCESS)
+                {
+                    return false;
+                }
+                apiResult = CM_Get_Device_ID_Size(out pLen, parentInst, CM_LOCATE_DEVNODE_NORMAL);
+                if (apiResult != CR_SUCCESS)
+                {
+                    return false;
+                }
+                char[] ptrInstanceBuf = new char[pLen];
+                //获取设备id字符串地址
+                apiResult = CM_Get_Device_ID(parentInst, ptrInstanceBuf, pLen, 0);
+                if (apiResult != CR_SUCCESS)
+                {
+                    return false;
+                }
+                resultDeviceID = new string(ptrInstanceBuf);
+                return true;
+            }
+            catch (Exception ecException)
+            {
+                return false;
+            }
+        }
+        #endregion
     }
 }
